@@ -60,6 +60,7 @@ private:
         int column;
     };
     
+    typedef void (^ TraversalBlock)(int _r,int _c);
     
     int  sudoku_[9][9];
     
@@ -103,6 +104,8 @@ private:
     void avaliableOn(int row,int column);
     bool avaliable(int row,int column,int num);
     int  nextAvailableNum(int _row,int column,int _num);
+    
+    void traversalAssociateCell(int _row,int _column,TraversalBlock _block );
 };
 
 const SudokuSolution::Coordinate SudokuSolution::groups_[27][9] = {
@@ -283,10 +286,10 @@ void SudokuSolution::init()
                         int num = sudoku_[s_r][s_c];
                         if(num != 0)
                         {
-                            if(available_num_[s_r][s_c][num-1] )
+                            if(available_num_[r][c][num-1] )
                             {
-                                available_num_[s_r][s_c][num-1] = false;
-                                available_num_count_[s_r][s_c] --;
+                                available_num_[r][c][num-1] = false;
+                                available_num_count_[r][c] --;
                             }
                         }
                     }
@@ -377,6 +380,26 @@ void SudokuSolution::unsetNum(int row,int column)
         available_num_[row][column][num] = true;
     sudoku_[row][column] = 0;
     
+   /* traversalAssociateCell(row, column, ^(int _r, int _c) {
+        int num = sudoku_[_r][_c];
+        if(num == 0)
+        {
+            if(avaliable(_r, _c, old_count))
+            {
+                available_num_count_[_r][_c] ++;
+                available_num_[_r][_c][old_count-1] = true;
+            }
+        }
+        else
+        {
+            if(available_num_[row][column][num-1])
+            {
+                available_num_[row][column][num-1] = false;
+                available_num_count_[row][column] --;
+            }
+        }
+    });*/
+    
     for(int ix = 0;ix<3;ix++)
     {
         int group_id = associate_group_id_[row][column][ix];
@@ -413,25 +436,17 @@ void SudokuSolution::avaliableOn(int row,int column)
         available_num_[row][column][n] = true;
     available_num_count_[row][column]  = 9;
     
-    for(int ix = 0;ix<3;ix++)
-    {
-        int group_id = associate_group_id_[row][column][ix];
-        for(int i = 0;i<9;i++)
+    traversalAssociateCell(row, column, ^(int _r, int _c) {
+        int num = sudoku_[_r][_c];
+        if(num != 0)
         {
-            int r = groups_[group_id][i].row;
-            int c = groups_[group_id][i].column;
-            
-            int num = sudoku_[r][c];
-            if(num != 0)
+            if(available_num_[_r][_c][num-1])
             {
-                if(available_num_[r][c][num-1])
-                {
-                    available_num_[r][c][num-1] = false;
-                    available_num_count_[r][c] --;
-                }
+                available_num_[_r][_c][num-1] = false;
+                available_num_count_[_r][_c] --;
             }
         }
-    }
+    });
 }
 bool SudokuSolution::avaliable(int row,int column,int num)
 {
@@ -460,6 +475,22 @@ int SudokuSolution::nextAvailableNum(int _row,int _column,int _num)
             break;
     }
     return next_num;
+}
+void SudokuSolution::traversalAssociateCell(int _row, int _column, TraversalBlock _block)
+{
+    for(int ix = 0;ix < 3;ix++)
+    {
+        int group_id = associate_group_id_[_row][_column][ix];
+        for(int i = 0;i <9;i++)
+        {
+            int r = groups_[group_id][i].row;
+            int c = groups_[group_id][i].column;
+            if(r!= _row || c!= _column)
+            {
+                _block(r,c);
+            }
+        }
+    }
 }
 /*-------------------------private function-------------------------*/
 int main(int argc, const char * argv[]) {
